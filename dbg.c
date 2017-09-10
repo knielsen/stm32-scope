@@ -121,6 +121,14 @@ print_uint32_hex(uint32_t val)
 }
 
 
+void
+println_uint32_hex(uint32_t val)
+{
+  print_uint32_hex(val);
+  serial_puts("\r\n");
+}
+
+
 char *
 float_to_str(char *buf, float f, uint32_t dig_before, uint32_t dig_after)
 {
