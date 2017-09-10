@@ -1,6 +1,6 @@
 TARGET=stm32-scope
 
-OBJS = $(TARGET).o led.o dbg.o util.o
+OBJS = $(TARGET).o led.o dbg.o util.o adc.o
 
 STM_DIR=/kvm/src/STM32F4xx_DSP_StdPeriph_Lib_V1.6.1
 STM_SRC = $(STM_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src

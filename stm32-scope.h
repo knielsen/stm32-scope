@@ -38,7 +38,13 @@ extern char *float_to_str(char *buf, float f, uint32_t dig_before, uint32_t dig_
 extern void println_float(float f, uint32_t dig_before, uint32_t dig_after);
 extern void serial_dump_buf(uint8_t *buf, uint32_t len);
 
-/* led.h */
+/* led.c */
 extern void setup_led(void);
 extern void led_on(void);
 extern void led_off(void);
+
+/* adc.c */
+extern void config_adc(void);
+extern uint32_t adc_read(void);
+extern uint32_t adc_vrefint_read(void);
+extern float adc_voltage_read(void);
