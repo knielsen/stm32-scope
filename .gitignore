@@ -1,0 +1,4 @@
+*~
+*.o
+stm32-scope.bin
+stm32-scope.elf
