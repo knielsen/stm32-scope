@@ -26,6 +26,51 @@
 #endif
 
 
+/* Fast access to GPIO. */
+static inline void
+my_gpio_set(GPIO_TypeDef *gpio, uint32_t bits)
+{
+  gpio->BSRRL = bits;
+}
+
+
+static inline void
+my_gpio_reset(GPIO_TypeDef *gpio, uint32_t bits)
+{
+  gpio->BSRRH = bits;
+}
+
+
+/*
+  Writing a single bit in a GPIO, using bit-banding.
+  BIT_NUMBER is the bit (0..15). VAL is 0 or 1.
+*/
+static inline void
+my_gpio_write_one_bit(GPIO_TypeDef *gpio, uint32_t bit_number, uint32_t val)
+{
+  static const uint32_t bit_band_base = PERIPH_BB_BASE;  /* 0x42000000 */
+  static const uint32_t periph_base = PERIPH_BASE;       /* 0x40000000 */
+  uint32_t byte_offset = (uint32_t)gpio - periph_base + offsetof(GPIO_TypeDef, ODR);
+  uint32_t word_addr = bit_band_base | (byte_offset<<5) | (bit_number<<2);
+  *(volatile uint32_t *)word_addr = val;
+}
+
+
+/*
+  Read a single bit in a GPIO, using bit-banding.
+  BIT_NUMBER is the bit (0..15). Returns 0 or 1.
+*/
+static inline uint32_t
+my_gpio_read_one_bit(GPIO_TypeDef *gpio, uint32_t bit_number)
+{
+  static const uint32_t bit_band_base = PERIPH_BB_BASE;  /* 0x42000000 */
+  static const uint32_t periph_base = PERIPH_BASE;       /* 0x40000000 */
+  uint32_t byte_offset = (uint32_t)gpio - periph_base + offsetof(GPIO_TypeDef, ODR);
+  uint32_t word_addr = bit_band_base | (byte_offset<<5) | (bit_number<<2);
+  return *(volatile uint32_t *)word_addr;
+}
+
+
 /* util.c */
 extern void delay(uint32_t nCount);
 
@@ -59,3 +104,8 @@ extern void adc_dma_start(void);
 extern uint32_t adc_read(void);
 extern uint32_t adc_vrefint_read(void);
 extern float adc_voltage_read(void);
+
+/* st7787.c */
+extern void setup_st7787_io(void);
+extern void st7787_init(void);
+extern void st7787_test(void);

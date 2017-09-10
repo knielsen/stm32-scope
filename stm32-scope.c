@@ -9,8 +9,11 @@ main()
   setup_led();
   config_adc();
   config_adc_dma();
+  setup_st7787_io();
   serial_puts("Initialising done, starting main loop.\r\n");
 
+  st7787_init();
+  st7787_test();
   adc_dma_start();
   for (;;) {
     float v;
