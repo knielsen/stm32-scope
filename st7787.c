@@ -355,13 +355,29 @@ put_pixel(uint32_t x, uint32_t y, uint16_t col)
 void
 display_render_adc(void)
 {
-  uint32_t i;
+  uint32_t i, j;
+  uint16_t val;
+  uint32_t height;
+  uint32_t last_height, h1, h2;
 
   frame_cls();
-  for (i = 0; i < 320; ++i) {
-    uint16_t val = adc_sample_buffer[i];
-    uint32_t height = val*240/4096;
-    put_pixel(height, i, 0xff0);
+
+  val = adc_sample_buffer[0];
+  height = val*240/4096;
+  put_pixel(height, 0, 0xff0);
+  last_height = height;
+
+  for (i = 1; i < 320; ++i) {
+    val = adc_sample_buffer[i];
+    height = val*240/4096;
+    if (height < last_height) {
+      h1 = height; h2 = last_height;
+    } else {
+      h1 = last_height; h2 = height;
+    }
+    for (j = h1; j <= h2; ++j)
+      put_pixel(j, i, 0xff0);
+    last_height = height;
   }
   frame_transfer();
 }
