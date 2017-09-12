@@ -68,10 +68,9 @@ main()
   st7787_test();
   adc_dma_start();
   for (;;) {
-    if (adc_triggered())
-      adc_start_sample_with_trigger(0, 0, 0);
-
-    if (adc_triggered())
+    if (adc_triggered()) {
       display_render_adc();
+      adc_start_sample_with_trigger(2000, 1, 0);
+    }
   }
 }
