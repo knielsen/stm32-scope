@@ -12,6 +12,8 @@
 
 #define ADC_BUFFER_SIZE 64                      /* In 16-bit entries */
 
+#define SAMPLE_BUFFER_SIZE 4096
+
 
 #ifdef STM32F4_DISCOVERY
 #define LED_PERIPH RCC_AHB1Periph_GPIOD
@@ -94,6 +96,7 @@ extern void led_off(void);
 
 /* adc.c */
 extern volatile uint32_t adc_dma_buffers[2][ADC_BUFFER_SIZE*sizeof(uint16_t)/sizeof(uint32_t)];
+extern volatile uint16_t adc_sample_buffer[SAMPLE_BUFFER_SIZE];
 static inline uint16_t adc_buf_val(uint32_t buf, uint32_t idx) {
   return ((volatile uint16_t *)&adc_dma_buffers[buf])[idx];
 }
@@ -104,8 +107,11 @@ extern void adc_dma_start(void);
 extern uint32_t adc_read(void);
 extern uint32_t adc_vrefint_read(void);
 extern float adc_voltage_read(void);
+extern void adc_start_sample_with_trigger(uint16_t level, uint8_t rising, uint8_t falling);
+extern int adc_triggered(void);
 
 /* st7787.c */
 extern void setup_st7787_io(void);
 extern void st7787_init(void);
 extern void st7787_test(void);
+extern void display_render_adc(void);

@@ -14,6 +14,7 @@ STM_OBJS  += stm32f4xx_dma.o
 STM_OBJS  += stm32f4xx_adc.o
 STM_OBJS  += stm32f4xx_syscfg.o
 STM_OBJS  += stm32f4xx_exti.o
+STM_OBJS  += misc.o
 
 INC_DIRS += $(STM_DIR)/Libraries/CMSIS/Include
 INC_DIRS += $(STM_DIR)/Libraries/CMSIS/Device/ST/STM32F4xx/Include

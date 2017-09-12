@@ -1,63 +1,77 @@
 #include "stm32-scope.h"
 
 
+static void
+config_interrupt(void)
+{
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+}
+
+
+void
+EXTI0_IRQHandler(void)
+{
+  if (EXTI->PR & EXTI_Line0) {
+    serial_putchar('.');
+    /* Clear the pending interrupt event. */
+    EXTI->PR = EXTI_Line0;
+  }
+}
+
+
 int
 main()
 {
   setup_serial();
   serial_puts("Initialising...\r\n");
   setup_led();
+  config_interrupt();
   config_adc();
   config_adc_dma();
   setup_st7787_io();
+
+  {
+    union {
+      NVIC_InitTypeDef NVIC_InitStruct;
+    } u;
+
+    /* Software interrupt on EXTI0 (no GPIO triggering). */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+    /* Disable events on EXTI0. */
+    EXTI->EMR &= ~EXTI_Line0;
+    /* Disable GPIO triggers. */
+    EXTI->RTSR &= ~EXTI_Line0;
+    EXTI->FTSR &= ~EXTI_Line0;
+    /* Enable interrupts on EXTI0. */
+    EXTI->IMR |= EXTI_Line0;
+
+    /* Clear any pending interrupt before enabling. */
+    EXTI->PR = EXTI_Line0;
+    u.NVIC_InitStruct.NVIC_IRQChannel = EXTI0_IRQn;
+    u.NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 15;
+    u.NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+    u.NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&u.NVIC_InitStruct);
+
+    serial_puts("Softint first trigger:\r\n");
+    EXTI->PR = EXTI_Line0;
+    EXTI->SWIER = EXTI_Line0;
+    serial_puts("Softint second trigger:\r\n");
+    EXTI->PR = EXTI_Line0;
+    EXTI->SWIER = EXTI_Line0;
+    serial_puts("Softint done:\r\n");
+  }
+
   serial_puts("Initialising done, starting main loop.\r\n");
 
   st7787_init();
   st7787_test();
   adc_dma_start();
   for (;;) {
-    float v;
-    uint32_t i;
-    char buf[20];
+    if (adc_triggered())
+      adc_start_sample_with_trigger(0, 0, 0);
 
-    led_on();
-    serial_putchar('/');
-    delay(MCU_HZ/3/2);
-    led_off();
-    serial_putchar('\\');
-    delay(MCU_HZ/3/2);
-
-    serial_puts("Readings:");
-    for (i = 0; i < 4; ++i) {
-      v = adc_val2voltage(adc_buf_val(0, i));
-      serial_puts(" ");
-      float_to_str(buf, v, 1, 3);
-      serial_puts(buf);
-    }
-    serial_puts(" ..");
-    for (i = 0; i < 4; ++i) {
-      v = adc_val2voltage(adc_buf_val(1, (ADC_BUFFER_SIZE-4)+i));
-      serial_puts(" ");
-      float_to_str(buf, v, 1, 3);
-      serial_puts(buf);
-    }
-    serial_puts("\r\n");
-
-    /*
-    serial_puts("    manual read: ");
-    println_float(adc_val2voltage(ADC_GetConversionValue(ADC1)), 1, 3);
-
-    serial_puts("HISR: 0x"); println_uint32_hex(DMA2->HISR);
-    serial_puts("  CR: 0x"); println_uint32_hex(DMA2_Stream4->CR);
-    serial_puts("NDTR: 0x"); println_uint32_hex(DMA2_Stream4->NDTR);
-    serial_puts(" PAR: 0x"); println_uint32_hex(DMA2_Stream4->PAR);
-    serial_puts("M0AR: 0x"); println_uint32_hex(DMA2_Stream4->M0AR);
-    serial_puts("M1AR: 0x"); println_uint32_hex(DMA2_Stream4->M1AR);
-    serial_puts(" FCR: 0x"); println_uint32_hex(DMA2_Stream4->FCR);
-
-    serial_puts(" ADC_SR: 0x"); println_uint32_hex(ADC1->SR);
-    serial_puts("ADC_CR1: 0x"); println_uint32_hex(ADC1->CR1);
-    serial_puts("ADC_CR2: 0x"); println_uint32_hex(ADC1->CR2);
-    */
+    if (adc_triggered())
+      display_render_adc();
   }
 }

@@ -2,7 +2,7 @@
 #include "st7787.h"
 
 
-uint8_t frame_buffer[320*200*12/8];
+uint8_t frame_buffer[320*240*12/8];
 
 
 static inline void
@@ -308,4 +308,60 @@ st7787_test(void)
       pixels[j] = (i % 32) << 11 | ((17*i)%64) << 5 | ((57*i)%32);
     display_blit((i*119)%200, ((i*73)%300), 10, 10, pixels);
   }
+}
+
+
+/* Code for 12-bit local framebuffer. */
+static void
+frame_cls(void)
+{
+  memset(frame_buffer, 0, sizeof(frame_buffer));
+}
+
+
+static void
+frame_transfer(void)
+{
+  uint16_t tmp_buf[240];
+  uint32_t i, j;
+
+  /* ToDo: Wait for vertical blanking */
+  for (j = 0; j < 320; ++j) {
+    for (i = 0; i < 240; i += 2) {
+      uint32_t v = *(uint32_t *)(frame_buffer + j*(240*3/2) + i*3/2);
+      uint16_t v1 = v & 0xfff;
+      uint16_t v2 = (v >> 12) & 0xfff;
+      /* ToDo: Use the display in 12-bit mode to match our framebuffer. */
+      tmp_buf[i] = ((v1 & 0xf00) << 4) | ((v1 & 0x0f0) << 3) | ((v1 & 0x00f) << 1);
+      tmp_buf[i+1] = ((v2 & 0xf00) << 4) | ((v2 & 0x0f0) << 3) | ((v2 & 0x00f) << 1);
+    }
+    display_blit(0, j, 240, 1, tmp_buf);
+  }
+}
+
+
+static void
+put_pixel(uint32_t x, uint32_t y, uint16_t col)
+{
+  uint32_t nibble_idx = (240*3)*y + 3*x;
+  uint16_t *p = (uint16_t *)(frame_buffer + nibble_idx/2);
+  if (nibble_idx & 1)
+    *p = (*p & 0x000f) | (col << 4);
+  else
+    *p = (*p & 0xf000) | (col & 0x0fff);
+}
+
+
+void
+display_render_adc(void)
+{
+  uint32_t i;
+
+  frame_cls();
+  for (i = 0; i < 320; ++i) {
+    uint16_t val = adc_sample_buffer[i];
+    uint32_t height = val*240/4096;
+    put_pixel(height, i, 0xff0);
+  }
+  frame_transfer();
 }
