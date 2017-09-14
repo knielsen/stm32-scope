@@ -364,7 +364,7 @@ display_render_adc(void)
 
   val = adc_sample_buffer[0];
   height = val*240/4096;
-  put_pixel(height, 0, 0xff0);
+  put_pixel(height, 0, 0x026);
   last_height = height;
 
   for (i = 1; i < 320; ++i) {
@@ -376,8 +376,38 @@ display_render_adc(void)
       h1 = last_height; h2 = height;
     }
     for (j = h1; j <= h2; ++j)
-      put_pixel(j, i, 0xff0);
+      put_pixel(j, i, 0x026);
     last_height = height;
+  }
+}
+
+
+void
+display_render_fft(void)
+{
+  uint32_t i, j;
+
+  /* ToDo: For now hardcoded and assuming FFT size is 2048... */
+  for (i = 0; i < 320; ++i) {
+    float v_min = fft_data[1+3*i];
+    float v_max = v_min;
+    uint32_t h1, h2;
+
+    for (j = 1; j < 3; ++j) {
+      float v = fft_data[1+3*i+j];
+      if (v < v_min)
+        v_min = v;
+      else if (v > v_max)
+        v_max = v;
+    }
+    h1 = 200*v_min;
+    h2 = 200*v_max;
+    if (h1 >= 240)
+      h1 = 239;
+    if(h2 >= 240)
+      h2 = 239;
+    for (j = h1; j <= h2; ++j)
+      put_pixel(j, i, 0xff0);
   }
   frame_transfer();
 }

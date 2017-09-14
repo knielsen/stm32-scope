@@ -28,6 +28,14 @@
 #endif
 
 
+/*
+  Place data in core-coupled memory.
+  This data will not be initialised by startup code.
+  And it is not available to peripherals (such as DMA).
+*/
+#define PLACE_IN_CCM __attribute__ ((section(".uninit_ccm_data")))
+
+
 /* Fast access to GPIO. */
 static inline void
 my_gpio_set(GPIO_TypeDef *gpio, uint32_t bits)
@@ -115,3 +123,10 @@ extern void setup_st7787_io(void);
 extern void st7787_init(void);
 extern void st7787_test(void);
 extern void display_render_adc(void);
+extern void display_render_fft(void);
+
+/* fft.c */
+#define FFT_SIZE 2048
+extern float fft_data[FFT_SIZE];
+extern void init_fft();
+extern void fft_sample_buf(void);

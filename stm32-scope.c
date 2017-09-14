@@ -62,15 +62,18 @@ main()
     serial_puts("Softint done:\r\n");
   }
 
+  st7787_init();
+  init_fft();
   serial_puts("Initialising done, starting main loop.\r\n");
 
-  st7787_init();
   st7787_test();
   adc_dma_start();
   for (;;) {
     if (adc_triggered()) {
       display_render_adc();
-      adc_start_sample_with_trigger(2000, 1, 0);
+      fft_sample_buf();
+      display_render_fft();
+      adc_start_sample_with_trigger(2000, 0, 1);
     }
   }
 }
