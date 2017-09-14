@@ -103,6 +103,30 @@ extern void led_on(void);
 extern void led_off(void);
 
 /* adc.c */
+
+/*
+  Note: Only a few sample rates are available in STM32F4:
+    3, 15, 28, 56, 84, 112, 144, 480
+*/
+#define ADC_STM32_SAMPLE_CYCLES 56
+#define ADC_STM32_SAMPLETIME_CONFIG_MK2(cycles) ADC_SampleTime_ ## cycles ## Cycles
+#define ADC_STM32_SAMPLETIME_CONFIG_MK(cycles) ADC_STM32_SAMPLETIME_CONFIG_MK2(cycles)
+#define ADC_STM32_SAMPLETIME_CONFIG ADC_STM32_SAMPLETIME_CONFIG_MK(ADC_STM32_SAMPLE_CYCLES)
+
+/*
+  ADC clock depends on APB2 frequency (84 MHz max) and ADC clock divider.
+  Max ADC clock is spec'ed at 30 MHz, so from 84 MHz a divisor of 4 gives the
+  maximum valid clock of 21 MHz.
+*/
+#define ADC_STM32_CLOCK_DIVIDER ADC_Prescaler_Div4
+#define ADC_STM32_CLOCK 21000000
+/*
+  Sample rate comes from sample time plus 12 cycles for conversion
+  (at the maximum resolution of 12 bit).
+  The SAMPLE_RATE value is in units of samples per second.
+*/
+#define SAMPLE_RATE (ADC_STM32_CLOCK / (12 + ADC_STM32_SAMPLE_CYCLES))
+
 extern volatile uint32_t adc_dma_buffers[2][ADC_BUFFER_SIZE*sizeof(uint16_t)/sizeof(uint32_t)];
 extern volatile uint16_t adc_sample_buffer[SAMPLE_BUFFER_SIZE];
 static inline uint16_t adc_buf_val(uint32_t buf, uint32_t idx) {

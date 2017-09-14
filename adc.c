@@ -31,7 +31,7 @@ config_adc(void)
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 
   ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
-  ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div4;
+  ADC_CommonInitStructure.ADC_Prescaler = ADC_STM32_CLOCK_DIVIDER;
   ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
   ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
   ADC_CommonInit(&ADC_CommonInitStructure);
@@ -101,7 +101,7 @@ adc_dma_start(void)
   DMA_Cmd(DMA2_Stream4, ENABLE);
   ADC_DMACmd(ADC1, ENABLE);
 
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_56Cycles);
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_STM32_SAMPLETIME_CONFIG);
   ADC_SoftwareStartConv(ADC1);
 }
 

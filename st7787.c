@@ -388,6 +388,15 @@ display_render_fft(void)
   uint32_t i, j;
 
   /* ToDo: For now hardcoded and assuming FFT size is 2048... */
+
+  /* Frequency markers */
+  for (i = 1; i < 15; ++i) {
+    for (j = 0; j < 240; ++j) {
+      if ((i % 5) == 0 || (j % 3) == 0)
+        put_pixel(j, (i*10000*FFT_SIZE+SAMPLE_RATE)/(SAMPLE_RATE*3), 0xa33);
+    }
+  }
+
   for (i = 0; i < 320; ++i) {
     float v_min = fft_data[1+3*i];
     float v_max = v_min;
