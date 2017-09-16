@@ -81,6 +81,18 @@ my_gpio_read_one_bit(GPIO_TypeDef *gpio, uint32_t bit_number)
 }
 
 
+static inline uint32_t
+get_time(void)
+{
+  return SysTick->VAL;
+}
+static inline uint32_t
+calc_time_from_val(uint32_t start, uint32_t stop)
+{
+  return (start - stop) & 0xffffff;
+}
+
+
 /* util.c */
 extern void delay(uint32_t nCount);
 

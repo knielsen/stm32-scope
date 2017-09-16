@@ -2,6 +2,15 @@
 
 
 static void
+config_systick(void)
+{
+  SysTick->LOAD = 0xffffff;
+  SysTick->VAL = 0;
+  SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk;
+}
+
+
+static void
 config_interrupt(void)
 {
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
@@ -25,6 +34,7 @@ main()
   setup_serial();
   serial_puts("Initialising...\r\n");
   setup_led();
+  config_systick();
   config_interrupt();
   config_adc();
   config_adc_dma();

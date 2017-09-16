@@ -4,7 +4,10 @@ OBJS = $(TARGET).o led.o dbg.o util.o adc.o st7787.o fft.o
 
 STM_DIR=/kvm/src/STM32F4xx_DSP_StdPeriph_Lib_V1.6.1
 STM_SRC = $(STM_DIR)/Libraries/STM32F4xx_StdPeriph_Driver/src
-vpath %.c $(STM_SRC)
+ARM_SRC = $(STM_DIR)/Libraries/CMSIS/DSP_Lib/Source/TransformFunctions \
+	$(STM_DIR)/Libraries/CMSIS/DSP_Lib/Source/CommonTables
+vpath %.c $(STM_SRC) $(ARM_SRC)
+vpath %.S $(ARM_SRC)
 STM_OBJS = system_stm32f4xx.o
 STM_OBJS  += stm32f4xx_rcc.o
 STM_OBJS  += stm32f4xx_gpio.o
@@ -15,6 +18,9 @@ STM_OBJS  += stm32f4xx_adc.o
 STM_OBJS  += stm32f4xx_syscfg.o
 STM_OBJS  += stm32f4xx_exti.o
 STM_OBJS  += misc.o
+STM_OBJS  += arm_rfft_fast_init_f32.o arm_rfft_fast_f32.o \
+	arm_common_tables.o arm_cfft_f32.o \
+	arm_cfft_radix8_f32.o arm_bitreversal2.o
 
 INC_DIRS += $(STM_DIR)/Libraries/CMSIS/Include
 INC_DIRS += $(STM_DIR)/Libraries/CMSIS/Device/ST/STM32F4xx/Include
@@ -34,7 +40,7 @@ LINKSCRIPT=$(TARGET).ld
 
 ARCH_FLAGS=-mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -ffunction-sections -fdata-sections -ffast-math
 
-CFLAGS=-ggdb -O3 -std=c99 -Wall -Wextra -Warray-bounds -Wno-unused-parameter $(ARCH_FLAGS) $(INC) -DSTM32F40XX -DUSE_STDPERIPH_DRIVER
+CFLAGS=-ggdb -O3 -std=c99 -Wall -Wextra -Warray-bounds -Wno-unused-parameter $(ARCH_FLAGS) $(INC) -DSTM32F40XX -DUSE_STDPERIPH_DRIVER -DARM_MATH_CM4 -D__FPU_PRESENT
 LDFLAGS=-Wl,--gc-sections -lm
 
 
@@ -53,6 +59,9 @@ $(STARTUP_OBJ): $(STARTUP_SRC)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 %.o: %.c $(TARGET).h stm32f4xx_conf.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+%.o: %.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
 %.bin: %.elf
