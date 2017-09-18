@@ -11,7 +11,7 @@ static arm_rfft_fast_instance_f32 arm_fft_cfg PLACE_IN_CCM;
 static float fft_buf[FFT_SIZE] PLACE_IN_CCM;
 /*
   This holds the magnitude output from the FFT. Only the first half 0<=i<=N/2
-  is stored, as the upper half is symmetric and above the Nykvist frequency, so
+  is stored, as the upper half is symmetric and above the Nyquist frequency, so
   of little use.
 */
 float fft_data[FFT_SIZE] PLACE_IN_CCM;
@@ -56,7 +56,7 @@ void fft_sample_buf(void)
   }
   /*
     Could do this if we really want, but it is redundant due to symmetry, and
-    of limited use since it is all above the Nykvist frequency.
+    of limited use since it is all above the Nyquist frequency.
 
   for (i = 1 ; i < FFT_SIZE/2; ++i)
     fft_data[FFT_SIZE-i] = fft_data[i];
