@@ -17,6 +17,7 @@ STM_OBJS  += stm32f4xx_dma.o
 STM_OBJS  += stm32f4xx_adc.o
 STM_OBJS  += stm32f4xx_syscfg.o
 STM_OBJS  += stm32f4xx_exti.o
+STM_OBJS  += stm32f4xx_fsmc.o
 STM_OBJS  += misc.o
 STM_OBJS  += arm_rfft_fast_init_f32.o arm_rfft_fast_f32.o \
 	arm_common_tables.o arm_cfft_f32.o \

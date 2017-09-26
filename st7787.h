@@ -22,10 +22,13 @@
 #define C_RDDID 0x04
 #define C_RDDST 0x09
 #define C_SLPOUT 0x11
+#define C_DISPOFF 0x28
 #define C_DISPON 0x29
 #define C_CASET 0x2A
 #define C_RASET 0x2B
 #define C_RAMWR 0x2C
+#define C_RGBSET 0x2D
+#define C_RAMRD 0x2E
 #define C_COLMOD 0x3A
 #define C_VSYNCOUT 0xBC
 #define C_VSYNCIN 0xBD
