@@ -57,7 +57,7 @@
 #define ST7787_DATA_BYTE (*(volatile uint8_t *)(FSMC_BASE | (1<<ST7787_CS_ADR_BIT)))
 
 
-uint8_t frame_buffer[320*240*3/2];
+uint8_t frame_buffer[320*240*3/2] __attribute__ ((aligned(16)));
 
 
 static inline void
@@ -179,6 +179,74 @@ fsmc_manual_init(void)
 }
 
 
+static void
+fsmc_dma_init(void)
+{
+  union {
+    DMA_InitTypeDef DMA_InitStructure;
+    NVIC_InitTypeDef NVIC_InitStruct;
+  } u;
+
+  /* Memory-to-memory transfer to FSMC on DMA2 stream 7 channel 0. */
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
+  DMA_DeInit(DMA2_Stream7);
+
+  u.DMA_InitStructure.DMA_BufferSize = 16;
+  u.DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;
+  u.DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
+  u.DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+  u.DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  u.DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+  u.DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+  u.DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+  u.DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
+  u.DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Enable;
+  u.DMA_InitStructure.DMA_Priority = DMA_Priority_Low;
+  u.DMA_InitStructure.DMA_PeripheralBaseAddr =(uint32_t) (frame_buffer);
+  u.DMA_InitStructure.DMA_Channel = DMA_Channel_0;
+  u.DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToMemory;
+  u.DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&ST7787_DATA_BYTE;
+  DMA_Init(DMA2_Stream7, &u.DMA_InitStructure);
+
+  /* Configure a transfer complete interrupt for FSMC DMA. */
+  DMA_ITConfig(DMA2_Stream7, DMA_IT_TC, DISABLE);
+  u.NVIC_InitStruct.NVIC_IRQChannel = DMA2_Stream7_IRQn;
+  u.NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 15;
+  u.NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+  u.NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&u.NVIC_InitStruct);
+  DMA_ITConfig(DMA2_Stream7, DMA_IT_TC, ENABLE);
+}
+
+
+static volatile uint32_t fsmc_dma_active = 0;
+
+void
+DMA2_Stream7_IRQHandler(void)
+{
+  if (DMA2->HISR & (DMA_FLAG_TCIF7 & 0x0fffffff)) {
+    /* Clear the interrupt request. */
+    DMA2->HIFCR = (DMA_FLAG_TCIF7 & 0x0fffffff);
+    fsmc_dma_active = 0;
+  }
+}
+
+
+static void
+fsmc_dma_start(void *from_adr, uint32_t num_words)
+{
+  /* Wait for any active dma operation to complete. */
+  while (fsmc_dma_active)
+    /* wait */;
+  fsmc_dma_active = 1;
+
+  DMA2_Stream7->PAR = (uint32_t)from_adr;
+  DMA2_Stream7->M0AR = (uint32_t)&ST7787_DATA_BYTE;
+  DMA2_Stream7->NDTR = num_words;
+  DMA_Cmd(DMA2_Stream7, ENABLE);
+}
+
+
 void
 setup_st7787_io(void)
 {
@@ -210,6 +278,8 @@ setup_st7787_io(void)
 
   /* Setup the data and control signals on FSMC. */
   fsmc_manual_init();
+  /* Configre DMA transfer to the FSMC. */
+  fsmc_dma_init();
 
   /*
     After power-up, should hold RESET asserted for min 120 msec.
@@ -446,7 +516,9 @@ frame_transfer(void)
   buf[2] = 319 >> 8;
   buf[3] = 319 & 0xff;
   display_command(C_RASET, buf, 4, NULL, 0);
-  display_command(C_RAMWR, frame_buffer, 240*320*3/2, NULL, 0);
+
+  st7787_write_cmd(C_RAMWR);
+  fsmc_dma_start(frame_buffer, 240*320*3/2/4);
 }
 
 
