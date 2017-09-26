@@ -233,16 +233,55 @@ DMA2_Stream7_IRQHandler(void)
 
 
 static void
-fsmc_dma_start(void *from_adr, uint32_t num_words)
+fsmc_dma_copy_start(void *from_adr, uint32_t num_words)
 {
+  uint32_t dma_cr;
+
   /* Wait for any active dma operation to complete. */
   while (fsmc_dma_active)
     /* wait */;
   fsmc_dma_active = 1;
 
+  dma_cr = DMA2_Stream7->CR;
   DMA2_Stream7->PAR = (uint32_t)from_adr;
   DMA2_Stream7->M0AR = (uint32_t)&ST7787_DATA_BYTE;
   DMA2_Stream7->NDTR = num_words;
+  /*
+    Set PINC flag and clear MINC so we transfer the local framebuffer to the
+    ST7787 data register destination address. And set destination size to
+    8-bit byte to match the FSMC databus size.
+  */
+  dma_cr &= ~(DMA_MemoryInc_Enable | DMA_SxCR_MSIZE);
+  dma_cr |= DMA_PeripheralInc_Enable | DMA_MemoryDataSize_Byte;
+  DMA2_Stream7->CR = dma_cr;
+
+  DMA_Cmd(DMA2_Stream7, ENABLE);
+}
+
+
+static void
+fsmc_dma_clear_start(uint32_t num_words)
+{
+  uint32_t dma_cr;
+
+  /* Wait for any active dma operation to complete. */
+  while (fsmc_dma_active)
+    /* wait */;
+  fsmc_dma_active = 1;
+
+  dma_cr = DMA2_Stream7->CR;
+  memset(frame_buffer, 0, sizeof(uint32_t));
+  DMA2_Stream7->PAR = ((uint32_t)frame_buffer);
+  DMA2_Stream7->M0AR = ((uint32_t)frame_buffer) + 4;
+  DMA2_Stream7->NDTR = num_words - 1;
+  /*
+    Clear PINC flag and set MINC so we copy the first cleared word on top of
+    everything else. And set destination size to 32-bit word.
+  */
+  dma_cr &= ~(DMA_PeripheralInc_Enable | DMA_SxCR_MSIZE);
+  dma_cr |= DMA_MemoryInc_Enable | DMA_MemoryDataSize_Word;
+  DMA2_Stream7->CR = dma_cr;
+
   DMA_Cmd(DMA2_Stream7, ENABLE);
 }
 
@@ -497,7 +536,14 @@ st7787_test(void)
 static void
 frame_cls(void)
 {
-  memset(frame_buffer, 0, sizeof(frame_buffer));
+  fsmc_dma_clear_start(sizeof(frame_buffer)/4);
+  /*
+    ToDo: Rather than wait here, we could start the clear as soon as
+    the framebuffer has been transfered, and then here only wait if the
+    clear (or transfer) is still on-going.
+  */
+  while (fsmc_dma_active)
+    /* wait */ ;
 }
 
 
@@ -518,7 +564,7 @@ frame_transfer(void)
   display_command(C_RASET, buf, 4, NULL, 0);
 
   st7787_write_cmd(C_RAMWR);
-  fsmc_dma_start(frame_buffer, 240*320*3/2/4);
+  fsmc_dma_copy_start(frame_buffer, 240*320*3/2/4);
 }
 
 
