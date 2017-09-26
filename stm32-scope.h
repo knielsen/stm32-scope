@@ -139,10 +139,10 @@ extern void led_off(void);
 */
 #define SAMPLE_RATE (ADC_STM32_CLOCK / (12 + ADC_STM32_SAMPLE_CYCLES))
 
-extern volatile uint32_t adc_dma_buffers[2][ADC_BUFFER_SIZE*sizeof(uint16_t)/sizeof(uint32_t)];
+extern volatile uint16_t adc_dma_buffers[2][ADC_BUFFER_SIZE];
 extern volatile uint16_t adc_sample_buffer[SAMPLE_BUFFER_SIZE];
 static inline uint16_t adc_buf_val(uint32_t buf, uint32_t idx) {
-  return ((volatile uint16_t *)&adc_dma_buffers[buf])[idx];
+  return adc_dma_buffers[buf][idx];
 }
 static inline float adc_val2voltage(uint32_t val) { return (float)val*(3.3f/4095.0f); }
 extern void config_adc(void);

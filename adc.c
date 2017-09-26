@@ -2,10 +2,11 @@
 
 
 /*
-  This stores 16-bit samples, but is declared uint32_t so we get 32-bit
-  alignment for DMA burst transfer.
+  Align the adc dma buffer on a 16-byte boundary. This way, we can do 16-byte
+  dma bursts without crossing a 1024k boundary (which is not allowed according
+  to the STM32F4 reference manual).
 */
-volatile uint32_t adc_dma_buffers[2][ADC_BUFFER_SIZE*sizeof(uint16_t)/sizeof(uint32_t)];
+volatile uint16_t adc_dma_buffers[2][ADC_BUFFER_SIZE] __attribute__ ((aligned(16)));
 
 
 void
@@ -63,10 +64,10 @@ config_adc_dma(void)
   DMA_DeInit(DMA2_Stream4);
 
   u.DMA_InitStructure.DMA_BufferSize = ADC_BUFFER_SIZE;
-  u.DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
-  u.DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_1QuarterFull;
-  u.DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
-  u.DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+  u.DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;
+  u.DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
+  u.DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_INC4;
+  u.DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
   u.DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
   u.DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
   u.DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
@@ -163,8 +164,7 @@ DMA2_Stream4_IRQHandler(void)
     DMA2->HIFCR = (DMA_FLAG_TCIF4 & 0x0fffffff);
 
     /* Find which buffer DMA is currently using, and use the other one. */
-    p = (volatile uint16_t *)
-      adc_dma_buffers[1 - (1 & (DMA2_Stream4->CR >> 19 /* DMA_SxCR_CT */))];
+    p = adc_dma_buffers[1 - (1 & (DMA2_Stream4->CR >> 19 /* DMA_SxCR_CT */))];
     state = adc_state;
     prev = prev_sample;
     level = trigger_level;
