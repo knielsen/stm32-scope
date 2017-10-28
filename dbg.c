@@ -17,8 +17,12 @@ setup_serial(void)
   /* GPIOB clock enable */
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 
-  /* GPIOB Configuration:  USART3 TX on PB10. */
+  /* GPIOB Configuration:  USART3 TX on PB10 (and optional RX on PB11). */
+#ifdef DBG_RX
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10|GPIO_Pin_11;
+#else
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+#endif
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -26,15 +30,23 @@ setup_serial(void)
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   /* Connect USART3 pins to AF7 */
-  // TX = PB10
+  /* TX = PB10. */
   GPIO_PinAFConfig(GPIOB, GPIO_PinSource10, GPIO_AF_USART3);
+#ifdef DBG_RX
+  /* RX = PB11. */
+  GPIO_PinAFConfig(GPIOB, GPIO_PinSource11, GPIO_AF_USART3);
+#endif
 
   USART_InitStructure.USART_BaudRate = 115200;
   USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   USART_InitStructure.USART_StopBits = USART_StopBits_1;
   USART_InitStructure.USART_Parity = USART_Parity_No;
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+#ifdef DBG_RX
+  USART_InitStructure.USART_Mode = USART_Mode_Tx|USART_Mode_Rx;
+#else
   USART_InitStructure.USART_Mode = USART_Mode_Tx;
+#endif
   USART_Init(USART3, &USART_InitStructure);
 
   USART_Cmd(USART3, ENABLE);
@@ -222,3 +234,15 @@ serial_dump_buf(uint8_t *buf, uint32_t len)
     serial_puts("\r\n");
   }
 }
+
+
+#ifdef DBG_RX
+int
+serial_rx(void)
+{
+  if (USART_GetFlagStatus(USART3, USART_FLAG_RXNE))
+    return USART_ReceiveData(USART3);
+  else
+    return -1;
+}
+#endif

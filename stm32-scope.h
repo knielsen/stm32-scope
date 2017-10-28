@@ -9,6 +9,7 @@
 #define MCU_HZ 168000000
 
 #define LILLE_VIDUNDER
+#define DBG_RX
 
 #define ADC_BUFFER_SIZE 64                      /* In 16-bit entries */
 
@@ -108,6 +109,9 @@ extern void println_uint32_hex(uint32_t val);
 extern char *float_to_str(char *buf, float f, uint32_t dig_before, uint32_t dig_after);
 extern void println_float(float f, uint32_t dig_before, uint32_t dig_after);
 extern void serial_dump_buf(uint8_t *buf, uint32_t len);
+#ifdef DBG_RX
+extern int serial_rx(void);
+#endif
 
 /* led.c */
 extern void setup_led(void);

@@ -28,6 +28,42 @@ EXTI0_IRQHandler(void)
 }
 
 
+static uint8_t trigger_enabled = 0;
+
+static void
+restart_adc(void)
+{
+  adc_start_sample_with_trigger((trigger_enabled ? 2000 : 0), 0, 1);
+}
+
+
+static void
+handle_serial_rx(void)
+{
+  int c;
+
+  while ((c = serial_rx()) >= 0) {
+    switch (c) {
+    case 't':
+      if (trigger_enabled) {
+        trigger_enabled = 0;
+        serial_puts("Trigger disabled.\r\n");
+      } else {
+        trigger_enabled = 1;
+        serial_puts("Trigger enabled.\r\n");
+      }
+      restart_adc();
+      break;
+    default:
+      serial_puts("Unhandled key: '");
+      serial_putchar(c);
+      serial_puts("'\r\n");
+      break;
+    }
+  }
+}
+
+
 int
 main()
 {
@@ -79,11 +115,12 @@ main()
   st7787_test();
   adc_dma_start();
   for (;;) {
+    handle_serial_rx();
     if (adc_triggered()) {
       display_render_adc();
       fft_sample_buf();
       display_render_fft();
-      adc_start_sample_with_trigger(2000, 0, 1);
+      restart_adc();
     }
   }
 }
