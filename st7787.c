@@ -88,7 +88,7 @@ fsmc_manual_init(void)
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0|GPIO_Pin_1|GPIO_Pin_4|GPIO_Pin_5|
     GPIO_Pin_7|GPIO_Pin_14|GPIO_Pin_15;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOD, &GPIO_InitStructure);
@@ -103,7 +103,7 @@ fsmc_manual_init(void)
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|
     GPIO_Pin_10;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOE, &GPIO_InitStructure);
@@ -112,6 +112,17 @@ fsmc_manual_init(void)
   GPIO_PinAFConfig(GPIOE, GPIO_PinSource8, GPIO_AF_FSMC);
   GPIO_PinAFConfig(GPIOE, GPIO_PinSource9, GPIO_AF_FSMC);
   GPIO_PinAFConfig(GPIOE, GPIO_PinSource10, GPIO_AF_FSMC);
+
+#ifdef LILLE_VIDUNDER
+  /* Also setup FSMC bank 2 CS on PG9. */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_25MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOG, &GPIO_InitStructure);
+  GPIO_PinAFConfig(GPIOG, GPIO_PinSource9, GPIO_AF_FSMC);
+#endif
 
   RCC_AHB3PeriphClockCmd(RCC_AHB3Periph_FSMC, ENABLE);
   FSMC_NORSRAMDeInit(FSMC_BANK);
@@ -151,13 +162,18 @@ fsmc_manual_init(void)
   /* Write timing. */
   alttiming.FSMC_AddressSetupTime = 3;          /* Min 10 ns */
   alttiming.FSMC_AddressHoldTime = 0xf;
-  /* Data setup is spec'ed at 20 ns - but did not run stable below 7 cycles? */
-  alttiming.FSMC_DataSetupTime = 7;
+  /*
+    Data setup is spec'ed at 20 ns - but did not run stable below 5 cycles.
+    Could be due to slower fall/rise times. Spec says we cannot run faster than
+    15 MHz anyway, so might as well be generous with data setup time, since
+    otherwise we just need to wait in BusTurnAround.
+  */
+  alttiming.FSMC_DataSetupTime = 6;
   /*
     Min write cycle time is spec'ed at 66 ns (15 MHz), which is ~11 cycles.
-    We spend 3+7+1=10 cycles in ADDSET/DATAST, so no BUSTURN cycles.
+    We spend 3+6+1=10 cycles in ADDSET/DATAST, so 1 BUSTURN cycle.
   */
-  alttiming.FSMC_BusTurnAroundDuration = 0;
+  alttiming.FSMC_BusTurnAroundDuration = 1;
   alttiming.FSMC_CLKDivision = 0xf;
   alttiming.FSMC_DataLatency = 0xf;
   alttiming.FSMC_AccessMode = FSMC_AccessMode_A;
