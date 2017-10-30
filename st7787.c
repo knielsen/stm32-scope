@@ -57,7 +57,7 @@
 #define ST7787_DATA_BYTE (*(volatile uint8_t *)(FSMC_BASE | (1<<ST7787_CS_ADR_BIT)))
 
 
-uint8_t frame_buffer[320*240*3/2] __attribute__ ((aligned(16)));
+uint8_t frame_buffer[ST7787_W*ST7787_H*3/2] __attribute__ ((aligned(16)));
 
 
 static inline void
@@ -430,8 +430,8 @@ display_cls(void)
 
   memset(buf, 0, sizeof(buf));
   for (i = 0; i < 320; ++i) {
-    display_blit(0, i, 120, 1, buf);
-    display_blit(120, i, 120, 1, buf);
+    display_blit(i, 0, 1, 120, buf);
+    display_blit(i, 120, 1, 120, buf);
   }
 }
 
@@ -467,6 +467,9 @@ st7787_init(void)
   */
   buf[0] = (13 << 4) | 3;
   display_command(C_COLMOD, buf, 1, NULL, 0);
+  /* Let X go 0..319 top..bottom and Y 0..239 left..right. */
+  buf[0] = 0x20;                      /* MY=0 MX=0 MV=1 ML=0 RGB=0 MH=0 0 0 */
+  display_command(C_MADCTL, buf, 1, NULL, 0);
   /* Clear the screen. */
   display_cls();
   /* Disable external vsync. */
@@ -529,7 +532,7 @@ st7787_test(void)
       pixels[j+1] = (col_b << 4) | col_r;
       pixels[j+2] = (col_g << 4) | col_b;
     }
-    display_blit((i*119)%200, ((i*73)%300), 10, 10, pixels);
+    display_blit(((i*73)%300), (i*119)%200, 10, 10, pixels);
   }
 
   serial_puts("RDDST: ");
@@ -570,17 +573,17 @@ frame_transfer(void)
   uint8_t buf[4];
   buf[0] = 0 >> 8;
   buf[1] = 0 & 0xff;
-  buf[2] = 239 >> 8;
-  buf[3] = 239 & 0xff;
+  buf[2] = (ST7787_W - 1) >> 8;
+  buf[3] = (ST7787_W - 1) & 0xff;
   display_command(C_CASET, buf, 4, NULL, 0);
   buf[0] = 0 >> 8;
   buf[1] = 0 & 0xff;
-  buf[2] = 319 >> 8;
-  buf[3] = 319 & 0xff;
+  buf[2] = (ST7787_H - 1) >> 8;
+  buf[3] = (ST7787_H - 1) & 0xff;
   display_command(C_RASET, buf, 4, NULL, 0);
 
   st7787_write_cmd(C_RAMWR);
-  fsmc_dma_copy_start(frame_buffer, 240*320*3/2/4);
+  fsmc_dma_copy_start(frame_buffer, ST7787_H*ST7787_W*3/2/4);
 }
 
 
@@ -594,7 +597,7 @@ frame_transfer(void)
 static void
 put_pixel(uint32_t x, uint32_t y, uint16_t col)
 {
-  uint32_t nibble_idx = (240*3)*y + 3*x;
+  uint32_t nibble_idx = (ST7787_W*3)*y + 3*x;
   uint8_t *p = frame_buffer + nibble_idx/2;
   if (nibble_idx & 1) {
     p[0] = (p[0] & 0xf0) | (col >> 8);
@@ -617,9 +620,9 @@ simple_draw_char(uint32_t x, uint32_t y, char c, int col)
 
   if (c <= ' ' || c > 127)
     return;
-  for (i = 0; i < 8; ++i) {
-    uint8_t bits = tonc_font[8*(c-' ')+(7-i)];
-    for (j = 0; j < 8; ++j) {
+  for (j = 0; j < 8; ++j) {
+    uint8_t bits = tonc_font[8*(c-' ')+(7-j)];
+    for (i = 0; i < 8; ++i) {
       if (bits & 128)
         put_pixel(x + i, y + j, col);
       bits <<= 1;
@@ -634,7 +637,7 @@ simple_draw_text(uint32_t x, uint32_t y, char *s, uint16_t col)
   while (*s && x < ST7787_W) {
     simple_draw_char(x, y, *s, col);
     ++s;
-    y += 8;
+    x += 8;
   }
 }
 
@@ -650,20 +653,20 @@ display_render_adc(void)
   frame_cls();
 
   val = adc_sample_buffer[0];
-  height = val*240/4096;
-  put_pixel(height, 0, 0x026);
+  height = val*ST7787_H/4096;
+  put_pixel(0, height, 0x026);
   last_height = height;
 
-  for (i = 1; i < 320; ++i) {
+  for (i = 1; i < ST7787_W; ++i) {
     val = adc_sample_buffer[i];
-    height = val*240/4096;
+    height = val*ST7787_H/4096;
     if (height < last_height) {
       h1 = height; h2 = last_height;
     } else {
       h1 = last_height; h2 = height;
     }
     for (j = h1; j <= h2; ++j)
-      put_pixel(j, i, 0x026);
+      put_pixel(i, j, 0x026);
     last_height = height;
   }
 }
@@ -678,20 +681,20 @@ display_render_fft(void)
 
   /* Frequency markers */
   for (i = 1; i < 15; ++i) {
-    for (j = 0; j < 240; ++j) {
+    for (j = 0; j < ST7787_H; ++j) {
       if ((i % 5) == 0 || (j % 3) == 0)
-        put_pixel(j, (i*10000*FFT_SIZE+SAMPLE_RATE)/(SAMPLE_RATE*3), 0xa33);
+        put_pixel((i*10000*FFT_SIZE+SAMPLE_RATE)/(SAMPLE_RATE*3), j, 0xa33);
       if ((i % 5) == 0) {
         char buf[20];
         char *p = tostr_uint32(buf, 10*i);
         strcpy(p, "kHz");
-        simple_draw_text(ST7787_H-10, (i*10000*FFT_SIZE+SAMPLE_RATE)/(SAMPLE_RATE*3)-20,
-                         buf, 0x999);
+        simple_draw_text((i*10000*FFT_SIZE+SAMPLE_RATE)/(SAMPLE_RATE*3)-20,
+                         ST7787_H-10, buf, 0x999);
       }
     }
   }
 
-  for (i = 0; i < 320; ++i) {
+  for (i = 0; i < ST7787_W; ++i) {
     float v_min = fft_data[1+3*i];
     float v_max = v_min;
     uint32_t h1, h2;
@@ -705,12 +708,12 @@ display_render_fft(void)
     }
     h1 = 200*v_min;
     h2 = 200*v_max;
-    if (h1 >= 240)
-      h1 = 239;
-    if(h2 >= 240)
-      h2 = 239;
+    if (h1 >= ST7787_H)
+      h1 = ST7787_H - 1;
+    if(h2 >= ST7787_H)
+      h2 = ST7787_H - 1;
     for (j = h1; j <= h2; ++j)
-      put_pixel(j, i, 0xff0);
+      put_pixel(i, j, 0xff0);
   }
   frame_transfer();
 }

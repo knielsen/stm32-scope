@@ -29,6 +29,7 @@
 #define C_RAMWR 0x2C
 #define C_RGBSET 0x2D
 #define C_RAMRD 0x2E
+#define C_MADCTL 0x36
 #define C_COLMOD 0x3A
 #define C_VSYNCOUT 0xBC
 #define C_VSYNCIN 0xBD
