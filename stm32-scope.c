@@ -29,6 +29,8 @@ EXTI0_IRQHandler(void)
 
 
 uint8_t trigger_enabled = 0;
+uint8_t mode_3d = 0;
+uint8_t filter_enabled = 0;
 uint16_t trigger_level = 2000;
 
 static void
@@ -68,6 +70,18 @@ handle_serial_rx(void)
       else
         trigger_level = 4095;
       restart_adc();
+      break;
+    case 'm':
+      mode_3d = !mode_3d;
+      break;
+    case 'f':
+      if (filter_enabled) {
+        filter_enabled = 0;
+        serial_puts("Filter disabled\r\n");
+      } else {
+        filter_enabled = 1;
+        serial_puts("Filter enabled\r\n");
+      }
       break;
     default:
       serial_puts("Unhandled key: '");
@@ -132,9 +146,23 @@ main()
   for (;;) {
     handle_serial_rx();
     if (adc_triggered()) {
-      display_render_adc();
-      fft_sample_buf();
-      display_render_fft();
+      if (filter_enabled) {
+        /* ToDo: This is very primitive, could do something better here. */
+        uint32_t i;
+        for (i = 0; i < FFT_SIZE; ++i) {
+          adc_sample_buffer[i] =
+            (adc_sample_buffer[i] + adc_sample_buffer[i+1] +
+             adc_sample_buffer[i+2] + adc_sample_buffer[i+3])/4;
+        }
+      }
+      if (mode_3d) {
+        fft_sample_buf();
+        display_render_3d();
+      } else {
+        display_render_adc();
+        fft_sample_buf();
+        display_render_fft();
+      }
       restart_adc();
     }
   }

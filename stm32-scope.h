@@ -168,6 +168,7 @@ extern void st7787_init(void);
 extern void st7787_test(void);
 extern void display_render_adc(void);
 extern void display_render_fft(void);
+extern void display_render_3d();
 
 /* fft.c */
 #define FFT_SIZE 2048
@@ -177,4 +178,5 @@ extern void fft_sample_buf(void);
 
 /* stm32-scope.c */
 extern uint8_t trigger_enabled;
+extern uint8_t mode_3d;
 extern uint16_t trigger_level;

@@ -642,6 +642,64 @@ simple_draw_text(uint32_t x, uint32_t y, char *s, uint16_t col)
 }
 
 
+struct colour3 {
+  uint8_t r, g, b;
+};
+
+static struct colour3
+hsv2rgb_f(float h, float s, float v)
+{
+  /* From Wikipedia: https://en.wikipedia.org/wiki/HSL_and_HSV */
+  struct colour3 x;
+  float c, m, r, g, b;
+
+  c = v * s;
+  h *= 6.0f;
+  if (h < 1.0f)
+  {
+    r = c;
+    g = c*h;
+    b = 0.0f;
+  }
+  else if (h < 2.0f)
+  {
+    r = c*(2.0f - h);
+    g = c;
+    b = 0.0f;
+  }
+  else if (h < 3.0f)
+  {
+    r = 0.0f;
+    g = c;
+    b = c*(h - 2.0f);
+  }
+  else if (h < 4.0f)
+  {
+    r = 0.0f;
+    g = c*(4.0f - h);
+    b = c;
+  }
+  else if (h < 5.0f)
+  {
+    r = c*(h - 4.0f);
+    g = 0.0f;
+    b = c;
+  }
+  else /* h < 6.0f */
+  {
+    r = c;
+    g = 0.0f;
+    b = c*(6.0f - h);
+  }
+  m = v - c;
+  /* Let's try to avoid rounding errors causing under/overflow. */
+  x.r = (uint8_t)(0.1f + 255.8f*(r + m));
+  x.g = (uint8_t)(0.1f + 255.8f*(g + m));
+  x.b = (uint8_t)(0.1f + 255.8f*(b + m));
+  return x;
+}
+
+
 void
 display_render_adc(void)
 {
@@ -722,5 +780,40 @@ display_render_fft(void)
     for (j = h1; j <= h2; ++j)
       put_pixel(i, j, 0xff0);
   }
+
+  frame_transfer();
+}
+
+
+void
+display_render_3d(void)
+{
+  uint32_t i, j;
+
+  memmove(&frame_buffer[ST7787_W*3/2], &frame_buffer[0], ST7787_W*(ST7787_H-1)*3/2);
+
+  for (i = 0; i < ST7787_W; ++i) {
+    float v_max = fft_data[1+3*i];
+    uint32_t h2;
+    struct colour3 rgb;
+    uint16_t col;
+    float v;
+
+    for (j = 1; j < 3; ++j) {
+      float v = fft_data[1+3*i+j];
+      if (v > v_max)
+        v_max = v;
+    }
+    h2 = 2000*v_max;
+    if(h2 >= ST7787_H)
+      h2 = ST7787_H - 1;
+    v = 0.85f - 0.87f*((float)h2 / (float)ST7787_H);
+    if (v < 0.0f)
+      v += 1.0f;
+    rgb = hsv2rgb_f(v, 0.95f, 0.7f);
+    col = ((uint16_t)(rgb.r & 0xf0) << 4) | ((rgb.g & 0xf0)) | ((rgb.b & 0xf0) >> 4);
+    put_pixel(i, 0, col);
+  }
+
   frame_transfer();
 }
