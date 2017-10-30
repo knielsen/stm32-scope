@@ -84,11 +84,9 @@ serial_output_hexbyte(uint8_t byte)
 }
 
 
-void
-println_uint32(uint32_t val)
+char *
+tostr_uint32(char *buf, uint32_t val)
 {
-  char buf[13];
-  char *p = buf;
   uint32_t l, d;
 
   l = 1000000000UL;
@@ -98,11 +96,20 @@ println_uint32(uint32_t val)
   do
   {
     d = val / l;
-    *p++ = '0' + d;
+    *buf++ = '0' + d;
     val -= d*l;
     l /= 10;
   } while (l > 0);
 
+  *buf = '\0';
+  return buf;
+}
+
+void
+println_uint32(uint32_t val)
+{
+  char buf[13];
+  char *p = tostr_uint32(buf, val);
   *p++ = '\r';
   *p++ = '\n';
   *p = '\0';

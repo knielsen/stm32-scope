@@ -606,6 +606,39 @@ put_pixel(uint32_t x, uint32_t y, uint16_t col)
 }
 
 
+/* Font and text drawing stuff. */
+
+#include "font_tonc.c"
+
+static void
+simple_draw_char(uint32_t x, uint32_t y, char c, int col)
+{
+  uint32_t i, j;
+
+  if (c <= ' ' || c > 127)
+    return;
+  for (i = 0; i < 8; ++i) {
+    uint8_t bits = tonc_font[8*(c-' ')+(7-i)];
+    for (j = 0; j < 8; ++j) {
+      if (bits & 128)
+        put_pixel(x + i, y + j, col);
+      bits <<= 1;
+    }
+  }
+}
+
+
+static void
+simple_draw_text(uint32_t x, uint32_t y, char *s, uint16_t col)
+{
+  while (*s && x < ST7787_W) {
+    simple_draw_char(x, y, *s, col);
+    ++s;
+    y += 8;
+  }
+}
+
+
 void
 display_render_adc(void)
 {
@@ -648,6 +681,13 @@ display_render_fft(void)
     for (j = 0; j < 240; ++j) {
       if ((i % 5) == 0 || (j % 3) == 0)
         put_pixel(j, (i*10000*FFT_SIZE+SAMPLE_RATE)/(SAMPLE_RATE*3), 0xa33);
+      if ((i % 5) == 0) {
+        char buf[20];
+        char *p = tostr_uint32(buf, 10*i);
+        strcpy(p, "kHz");
+        simple_draw_text(ST7787_H-10, (i*10000*FFT_SIZE+SAMPLE_RATE)/(SAMPLE_RATE*3)-20,
+                         buf, 0x999);
+      }
     }
   }
 
