@@ -694,6 +694,13 @@ display_render_fft(void)
     }
   }
 
+  if (trigger_enabled) {
+    /* Trigger marker */
+    uint32_t height = ((uint32_t)trigger_level*(ST7787_H-1) + 4095/2)/4095;
+    for (i = 0; i < ST7787_W; i += 2)
+      put_pixel(i, height, 0x777);
+  }
+
   for (i = 0; i < ST7787_W; ++i) {
     float v_min = fft_data[1+3*i];
     float v_max = v_min;
@@ -706,8 +713,8 @@ display_render_fft(void)
       else if (v > v_max)
         v_max = v;
     }
-    h1 = 200*v_min;
-    h2 = 200*v_max;
+    h1 = 2000*v_min;
+    h2 = 2000*v_max;
     if (h1 >= ST7787_H)
       h1 = ST7787_H - 1;
     if(h2 >= ST7787_H)

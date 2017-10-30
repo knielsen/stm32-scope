@@ -174,3 +174,7 @@ extern void display_render_fft(void);
 extern float fft_data[FFT_SIZE];
 extern void init_fft();
 extern void fft_sample_buf(void);
+
+/* stm32-scope.c */
+extern uint8_t trigger_enabled;
+extern uint16_t trigger_level;

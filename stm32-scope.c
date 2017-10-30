@@ -28,12 +28,13 @@ EXTI0_IRQHandler(void)
 }
 
 
-static uint8_t trigger_enabled = 0;
+uint8_t trigger_enabled = 0;
+uint16_t trigger_level = 2000;
 
 static void
 restart_adc(void)
 {
-  adc_start_sample_with_trigger((trigger_enabled ? 2000 : 0), 0, 1);
+  adc_start_sample_with_trigger((trigger_enabled ? trigger_level : 0), 0, 1);
 }
 
 
@@ -52,6 +53,20 @@ handle_serial_rx(void)
         trigger_enabled = 1;
         serial_puts("Trigger enabled.\r\n");
       }
+      restart_adc();
+      break;
+    case '<':
+      if (trigger_level > 100)
+        trigger_level -= 100;
+      else
+        trigger_level = 1;
+      restart_adc();
+      break;
+    case '>':
+      if (trigger_level < 4095 - 100)
+        trigger_level += 100;
+      else
+        trigger_level = 4095;
       restart_adc();
       break;
     default:

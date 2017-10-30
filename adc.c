@@ -142,7 +142,7 @@ adc_voltage_read(void)
 
 volatile enum { SAMPLE_WAIT=0, SAMPLE_TRIGGER, SAMPLE_STORE } adc_state;
 static uint16_t prev_sample;
-static volatile uint16_t trigger_level;
+static volatile uint16_t adc_trigger_level;
 static volatile uint8_t trigger_rising, trigger_falling;
 
 volatile uint16_t adc_sample_buffer[SAMPLE_BUFFER_SIZE];
@@ -167,7 +167,7 @@ DMA2_Stream4_IRQHandler(void)
     p = adc_dma_buffers[1 - (1 & (DMA2_Stream4->CR >> 19 /* DMA_SxCR_CT */))];
     state = adc_state;
     prev = prev_sample;
-    level = trigger_level;
+    level = adc_trigger_level;
     rise = trigger_rising;
     fall = trigger_falling;
     pos = sample_position;
@@ -209,7 +209,7 @@ DMA2_Stream4_IRQHandler(void)
 void
 adc_start_sample_with_trigger(uint16_t level, uint8_t rising, uint8_t falling)
 {
-  trigger_level = level;
+  adc_trigger_level = level;
   trigger_rising = rising;
   trigger_falling = falling;
 
